@@ -42,7 +42,6 @@ internal unsafe static class ConductorFlagHandler
 
         if(!P.Config.UseMoveToFlag) return;
 
-        // Same zone/instance: only the new walk-vs-teleport decision needs a settled, out-of-combat position.
         if(Svc.Condition[ConditionFlag.InCombat])
         {
             _pendingFlag = (m, nearestAetheryte.Value);
@@ -51,8 +50,8 @@ internal unsafe static class ConductorFlagHandler
 
         DecideWalkOrTeleport(m, nearestAetheryte.Value);
     }
-
-    /// <summary>Called every frame from Framework_Update to catch the moment combat ends.</summary>
+    
+    //Checks for combat end, but only bothers when we have a flag already pending. 
     internal static void Update()
     {
         if(_pendingFlag == null) return;

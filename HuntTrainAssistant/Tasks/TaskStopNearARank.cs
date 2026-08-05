@@ -34,10 +34,6 @@ public static unsafe class TaskStopNearARank
         return true;
     }
 
-    /// <summary>
-    ///     Dismounting while flying just starts the character falling -- it isn't actually dismounted
-    ///     until that fall finishes, so we have to keep polling instead of firing-and-forgetting.
-    /// </summary>
     private static bool StopAndDismount()
     {
         if(!Svc.Condition[ConditionFlag.Mounted]) return true;
