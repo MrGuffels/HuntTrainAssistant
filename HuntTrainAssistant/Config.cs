@@ -5,7 +5,7 @@ using HuntTrainAssistant.DataStructures;
 
 namespace HuntTrainAssistant;
 
-public class Config : IEzConfig
+public class Config
 {
     public bool Enabled = true;
     public bool AutoTeleport = true;

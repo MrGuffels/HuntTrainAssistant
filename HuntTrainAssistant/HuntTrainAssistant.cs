@@ -61,8 +61,11 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
                 TaskChangeInstanceAfterTeleport.Enqueue(TeleportTo.Instance, TeleportTo.Aetheryte.Territory.RowId);
             }
             TaskMount.EnqueueIfEnabled();
-            TaskMoveToFlag.EnqueueIfEnabled();
-            TaskStopNearARank.EnqueueIfEnabled();
+            if(TeleportTo.IsConductorTriggered)
+            {
+                TaskMoveToFlag.EnqueueIfEnabled();
+                TaskStopNearARank.EnqueueIfEnabled();
+            }
             PluginLog.Debug($"TeleportTo reset (2)");
             TeleportTo = null;
         }
@@ -159,8 +162,11 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
                     TaskChangeInstanceAfterTeleport.Enqueue(TeleportTo.Instance, (int)TeleportTo.Aetheryte.Territory.RowId);
                 }
                 TaskMount.EnqueueIfEnabled();
-                TaskMoveToFlag.EnqueueIfEnabled();
-                TaskStopNearARank.EnqueueIfEnabled();
+                if(TeleportTo.IsConductorTriggered)
+                {
+                    TaskMoveToFlag.EnqueueIfEnabled();
+                    TaskStopNearARank.EnqueueIfEnabled();
+                }
                 PluginLog.Debug($"TeleportTo reset (1)");
                 TeleportTo = null;
             }

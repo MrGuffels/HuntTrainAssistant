@@ -26,7 +26,7 @@ internal unsafe static class ConductorFlagHandler
         if(P.Config.AutoOpenMap)
             OpenMapIfNeeded(m);
 
-        LastMessageLoc = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, 0);
+        LastMessageLoc = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, 0, isConductorTriggered: true);
 
         if(!P.Config.AutoTeleport) return;
 
@@ -125,7 +125,7 @@ internal unsafe static class ConductorFlagHandler
 
     private static void TeleportTo(MapLinkPayload m, Aetheryte nearestAetheryte, int instance)
     {
-        P.TeleportTo = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, instance);
+        P.TeleportTo = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, instance, isConductorTriggered: true);
         Utils.DelayTeleport();
         Notify.Info("Engaging Autoteleport");
     }
