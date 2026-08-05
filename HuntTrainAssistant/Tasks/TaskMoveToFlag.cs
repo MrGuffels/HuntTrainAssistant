@@ -13,7 +13,7 @@ public static unsafe class TaskMoveToFlag
             P.TaskManager.Enqueue(() =>
             {
                 if(AgentMap.Instance()->IsFlagMarkerSet)
-                    Chat.ExecuteCommand("/vnav moveflag");
+                    Chat.ExecuteCommand("/vnav flyflag");
             }, "Move to flag");
         }
     }
