@@ -32,6 +32,18 @@ public static class Utils
 				}
 		}
 
+		public static void DelayPathing()
+		{
+				if(P.Config.PathingDelayEnabled && P.Config.TeleportDelayMax > 0 && P.Config.TeleportDelayMax >= P.Config.TeleportDelayMin)
+				{
+						var num = P.Config.TeleportDelayMin + Random.Shared.Next(P.Config.TeleportDelayMax - P.Config.TeleportDelayMin);
+						if(EzThrottler.GetRemainingTime("Pathing") < num)
+						{
+								EzThrottler.Throttle("Pathing", num, true);
+						}
+				}
+		}
+
 		public static bool CheckMultiMode()
 		{
 				if(S.AutoRetainerIPC.GetMultiModeStatus())

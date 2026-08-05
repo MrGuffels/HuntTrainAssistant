@@ -56,6 +56,17 @@ internal static class MapManager
         return aetheryte;
     }
 
+    internal static Vector3? GetFlagWorldPosition(MapLinkPayload maplinkMessage)
+    {
+        if(maplinkMessage == null) return null;
+        if(!Svc.Data.GetExcelSheet<Map>().TryGetFirst(x => x.TerritoryType.RowId == maplinkMessage.TerritoryType.RowId, out var map)) return null;
+
+        var num = map.SizeFactor / 100f;
+        var pixelX = (int)((maplinkMessage.XCoord - 1f) * (2048f / 41f) * num);
+        var pixelZ = (int)((maplinkMessage.YCoord - 1f) * (2048f / 41f) * num);
+        return ECommons.GameHelpers.Map.PixelCoordsToWorldCoords(pixelX, pixelZ, map.RowId);
+    }
+
     internal static Vector2 getDistanceCompensationHackDelta(string AetheryteName)
     {
         float X = 0f;

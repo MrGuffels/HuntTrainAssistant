@@ -43,7 +43,11 @@ public class Config : IEzConfig
     public bool TeleportDelayEnabled = false;
     public int TeleportDelayMin = 200;
     public int TeleportDelayMax = 700;
+    public bool PathingDelayEnabled = false;
     public bool UseMount = true;
     public int Mount = 0;
     public bool UseMoveToFlag = false;
+    public float TeleportOverheadDistance = 50f;
+    public bool StopNearARankEnabled = true;
+    public float StopNearARankDistance = 50f;
 }
