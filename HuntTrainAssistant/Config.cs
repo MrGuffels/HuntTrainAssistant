@@ -10,6 +10,10 @@ public class Config
     public bool Enabled = true;
     public bool AutoTeleport = true;
     public float AutoTeleportAetheryteDistanceDiff = 3f;
+    public bool UseMoveToFlag = false;
+    public float TeleportOverheadDistance = 50f;
+    public bool StopNearARankEnabled = true;
+    public float StopNearARankDistance = 50f;
     public bool SuppressChatOtherPlayers = true;
     public List<Sender> Conductors = [];
     public bool Debug = false;
@@ -41,13 +45,9 @@ public class Config
     public string PfinderString = "";
     public bool PfinderEnable = false;
     public bool TeleportDelayEnabled = false;
+    public bool PathingDelayEnabled = false;
     public int TeleportDelayMin = 200;
     public int TeleportDelayMax = 700;
-    public bool PathingDelayEnabled = false;
     public bool UseMount = true;
     public int Mount = 0;
-    public bool UseMoveToFlag = false;
-    public float TeleportOverheadDistance = 50f;
-    public bool StopNearARankEnabled = true;
-    public float StopNearARankDistance = 50f;
 }
