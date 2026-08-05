@@ -66,9 +66,9 @@ public unsafe class MainWindow : ConfigWindow
 						if(P.TeleportTo == null)
 						{
 								ImGuiEx.Text(ImGuiColors.DalamudGrey3, "Autoteleport: inactive");
-								if(ChatMessageHandler.LastMessageLoc != null && ImGui.Button($"Autoteleport to {ChatMessageHandler.LastMessageLoc.Aetheryte.PlaceName.Value.Name}"))
+								if(ConductorFlagHandler.LastMessageLoc != null && ImGui.Button($"Autoteleport to {ConductorFlagHandler.LastMessageLoc.Aetheryte.PlaceName.Value.Name}"))
 								{
-										P.TeleportTo = ChatMessageHandler.LastMessageLoc;
+										P.TeleportTo = ConductorFlagHandler.LastMessageLoc;
 								}
 						}
 						else

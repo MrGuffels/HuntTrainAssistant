@@ -41,6 +41,24 @@ public unsafe class TabSettings
                     ImGuiEx.Combo("Preferred Mount", ref P.Config.Mount, Mounts.Keys, names: Mounts);
                     ImGui.Unindent();
 								}
+								ImGui.Checkbox("Move to flag after arriving to your teleport destination", ref P.Config.UseMoveToFlag);
+								if(P.Config.UseMoveToFlag)
+								{
+										ImGui.Indent();
+										ImGuiEx.Text("If a second flag is posted while out of combat in the same zone/instance, fly to it directly");
+										ImGuiEx.Text("instead of re-teleporting, unless flying there would be farther than re-teleporting by this much:");
+                    ImGui.SetNextItemWidth(150f);
+                    ImGui.DragFloat("Teleport overhead (yalms)##teleportoverhead", ref P.Config.TeleportOverheadDistance, 1f, 0f, 200f);
+                    ImGui.Unindent();
+								}
+								ImGui.Checkbox("Stop and dismount when close to an A-rank while auto-moving", ref P.Config.StopNearARankEnabled);
+								if(P.Config.StopNearARankEnabled)
+								{
+										ImGui.Indent();
+                    ImGui.SetNextItemWidth(150f);
+                    ImGui.DragFloat("Stop distance (yalms)##stopneararank", ref P.Config.StopNearARankDistance, 1f, 1f, 100f);
+                    ImGui.Unindent();
+								}
                 ImGui.Unindent();
                 ImGui.Checkbox("Auto-open map when new location is linked", ref P.Config.AutoOpenMap);
 								ImGui.Indent();
@@ -63,6 +81,7 @@ public unsafe class TabSettings
                 ImGui.SetNextItemWidth(150f);
                 ImGuiEx.SliderIntAsFloat("Maximum delay", ref P.Config.TeleportDelayMax, 0, 1000);
                 ImGui.Unindent();
+								ImGui.Checkbox("Enable random pathing-start delay (uses same min/max above)", ref P.Config.PathingDelayEnabled);
 						})
 						.Section("Notifications")
 						.Widget(() =>

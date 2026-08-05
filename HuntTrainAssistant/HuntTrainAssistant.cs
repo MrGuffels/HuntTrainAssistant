@@ -61,6 +61,11 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
                 TaskChangeInstanceAfterTeleport.Enqueue(TeleportTo.Instance, TeleportTo.Aetheryte.Territory.RowId);
             }
             TaskMount.EnqueueIfEnabled();
+            if(TeleportTo.IsConductorTriggered)
+            {
+                TaskMoveToFlag.EnqueueIfEnabled();
+                TaskStopNearARank.EnqueueIfEnabled();
+            }
             PluginLog.Debug($"TeleportTo reset (2)");
             TeleportTo = null;
         }
@@ -74,6 +79,7 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
 
     private void Framework_Update(object framework)
     {
+        ConductorFlagHandler.Update();
         if(P.Config.Debug)
         {
             if(EzThrottler.Throttle("InformDebug", 600000)) DuoLog.Warning("You are using debug mode in HuntTrainAssistant which will break functions of the plugin. Please disable debug mode once you don't need it.");
@@ -156,6 +162,11 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
                     TaskChangeInstanceAfterTeleport.Enqueue(TeleportTo.Instance, (int)TeleportTo.Aetheryte.Territory.RowId);
                 }
                 TaskMount.EnqueueIfEnabled();
+                if(TeleportTo.IsConductorTriggered)
+                {
+                    TaskMoveToFlag.EnqueueIfEnabled();
+                    TaskStopNearARank.EnqueueIfEnabled();
+                }
                 PluginLog.Debug($"TeleportTo reset (1)");
                 TeleportTo = null;
             }

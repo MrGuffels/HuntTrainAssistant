@@ -14,6 +14,7 @@ public class ArrivalData
     public readonly Number Territory;
     public readonly Number Instance;
     public string World { get; init; }
+    public bool IsConductorTriggered { get; init; }
 
     public ArrivalData(Aetheryte aetheryte, Number territory, Number instance)
     {
@@ -22,20 +23,20 @@ public class ArrivalData
         Instance = instance;
     }
 
-    public static ArrivalData CreateOrNull(Number aetheryte, Number territory, Number instance)
+    public static ArrivalData CreateOrNull(Number aetheryte, Number territory, Number instance, bool isConductorTriggered = false)
     {
         if(Svc.Data.GetExcelSheet<Aetheryte>().TryGetRow(aetheryte, out var sheet))
         {
-            return new(sheet, territory, instance);
+            return new(sheet, territory, instance) { IsConductorTriggered = isConductorTriggered };
         }
         return null;
     }
 
-    public static ArrivalData CreateOrNull(Aetheryte? aetheryte, Number territory, Number instance)
+    public static ArrivalData CreateOrNull(Aetheryte? aetheryte, Number territory, Number instance, bool isConductorTriggered = false)
     {
         if(aetheryte != null)
         {
-            return new(aetheryte.Value, territory, instance);
+            return new(aetheryte.Value, territory, instance) { IsConductorTriggered = isConductorTriggered };
         }
         return null;
     }

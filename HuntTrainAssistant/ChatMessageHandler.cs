@@ -16,7 +16,6 @@ namespace HuntTrainAssistant;
 
 internal unsafe static class ChatMessageHandler
 {
-    internal static ArrivalData LastMessageLoc = null;
     internal static void Chat_ChatMessage(IHandleableChatMessage cm)
     {
         var conductorNames = P.Config.Conductors.Select(x => x.Name).ToList();
@@ -30,53 +29,9 @@ internal unsafe static class ChatMessageHandler
                 if (x is MapLinkPayload m)
                 {
                     isMapLink = true;
-                    if (isConductorMessage)
+                    if (isConductorMessage && (Utils.IsInHuntingTerritory() || P.Config.Debug))
                     {
-                        var nearestAetheryte = MapManager.GetNearestAetheryte(m);
-                        if(nearestAetheryte == null) continue;
-                        //PluginLog.Debug($"{m}");
-                        if (Utils.IsInHuntingTerritory() || P.Config.Debug)
-                        {
-                            if(P.Config.AutoTeleport)
-                            {
-                                if(m.TerritoryType.RowId != Svc.ClientState.TerritoryType)
-                                {
-                                    P.TeleportTo = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, P.Config.AutoSwitchInstanceToOne?1:0);
-                                    Utils.DelayTeleport();
-                                    Notify.Info("Engaging Autoteleport");
-                                }
-                                else if(Utils.CanAutoInstanceSwitch() && P.Config.AutoSwitchInstanceTwoRanks && S.LifestreamIPC.GetCurrentInstance() < S.LifestreamIPC.GetNumberOfInstances())
-                                {
-                                    P.TeleportTo = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, S.LifestreamIPC.GetCurrentInstance() + 1);
-                                    Utils.DelayTeleport();
-                                    PluginLog.Debug($"Auto-teleporting because of two A ranks killed ({P.KilledARanks.Print()})");
-                                    Notify.Info("Engaging Autoteleport");
-                                }
-                            }
-                            if (P.Config.AutoOpenMap)
-                            {
-                                var flag = AgentMap.Instance()->FlagMapMarker;
-                                if (AgentMap.Instance()->IsFlagMarkerSet != false && flag.TerritoryId == m.TerritoryType.RowId)
-                                {
-                                    if (Svc.Data.GetExcelSheet<Map>().TryGetFirst(x => x.TerritoryType.RowId == m.TerritoryType.RowId, out var place))
-                                    {
-                                        var pos = new Vector2(m.RawX / 1000, m.RawY / 1000);
-                                        var distance = Vector2.Distance(new(flag.XFloat, flag.YFloat), pos);
-                                        PluginLog.Information($"Distance between map marker and linked position is {distance}");
-                                        if(distance > 10 || !P.Config.NoDuplicateFlags)
-                                        {
-                                            Svc.GameGui.OpenMapWithMapLink(m);
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    Svc.GameGui.OpenMapWithMapLink(m);
-                                }
-                                var a = MapManager.GetNearestAetheryte(m);
-                                if(a != null) LastMessageLoc = ArrivalData.CreateOrNull(a, m.TerritoryType.RowId, 0);
-                            }
-                        }
+                        ConductorFlagHandler.OnConductorFlag(m);
                     }
                     break;
                 }
