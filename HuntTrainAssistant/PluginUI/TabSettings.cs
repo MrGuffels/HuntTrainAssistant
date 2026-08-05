@@ -41,6 +41,7 @@ public unsafe class TabSettings
                     ImGuiEx.Combo("Preferred Mount", ref P.Config.Mount, Mounts.Keys, names: Mounts);
                     ImGui.Unindent();
 								}
+								ImGui.Checkbox("Move to flag after arriving to your teleport destination", ref P.Config.UseMoveToFlag);
                 ImGui.Unindent();
                 ImGui.Checkbox("Auto-open map when new location is linked", ref P.Config.AutoOpenMap);
 								ImGui.Indent();
