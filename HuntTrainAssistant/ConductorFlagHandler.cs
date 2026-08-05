@@ -6,11 +6,8 @@ using HuntTrainAssistant.Tasks;
 
 namespace HuntTrainAssistant;
 
-/// <summary>
-///     Owns everything that happens in reaction to a conductor's flag: opening the map, deciding whether
-///     to teleport or walk, and following up with mount + move-to-flag. Kept separate from
-///     <see cref="ChatMessageHandler"/> so that S-rank/self chat traffic never touches auto-movement.
-/// </summary>
+///     TODO : Figure out how to manage S-rank auto movement and wait to engage. Finding waiting area is currently my biggest gap.
+
 internal unsafe static class ConductorFlagHandler
 {
     internal static ArrivalData LastMessageLoc = null;
@@ -30,8 +27,6 @@ internal unsafe static class ConductorFlagHandler
 
         if(!P.Config.AutoTeleport) return;
 
-        // Cross-zone and instance-switch teleports fire immediately, same as before this feature existed --
-        // the actual teleport cast already waits for combat to end elsewhere (HuntTrainAssistant.Framework_Update).
         if(m.TerritoryType.RowId != Svc.ClientState.TerritoryType)
         {
             TeleportTo(m, nearestAetheryte.Value, P.Config.AutoSwitchInstanceToOne ? 1 : 0);

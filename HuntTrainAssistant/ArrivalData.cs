@@ -14,12 +14,6 @@ public class ArrivalData
     public readonly Number Territory;
     public readonly Number Instance;
     public string World { get; init; }
-
-    /// <summary>
-    ///     True when this teleport was triggered by a conductor's flag, as opposed to Sonar/HuntAlerts or a
-    ///     manual button click. Only conductor-triggered teleports should follow up with move-to-flag/
-    ///     stop-near-A-rank -- those come from Sonar for arbitrary A/S ranks, not the hunt train's own flags.
-    /// </summary>
     public bool IsConductorTriggered { get; init; }
 
     public ArrivalData(Aetheryte aetheryte, Number territory, Number instance)
