@@ -11,9 +11,11 @@ public class Config
     public bool AutoTeleport = true;
     public float AutoTeleportAetheryteDistanceDiff = 3f;
     public bool UseMoveToFlag = false;
-    public float TeleportOverheadDistance = 50f;
+    public float TeleportOverheadDistance = 90f;
     public bool StopNearARankEnabled = true;
-    public float StopNearARankDistance = 50f;
+    public float StopNearARankDistance = 30f;
+    public bool DismountGraceEnabled = true;
+    public int DismountGraceDuration = 5000;
     public bool SuppressChatOtherPlayers = true;
     public List<Sender> Conductors = [];
     public bool Debug = false;

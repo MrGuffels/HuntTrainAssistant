@@ -6,8 +6,13 @@ using HuntTrainAssistant.Tasks;
 
 namespace HuntTrainAssistant;
 
+/// <summary>
+///     Owns everything that happens in reaction to a conductor's flag: opening the map, deciding whether
+///     to teleport or walk(hard coded to fly currently), and following up with mount + move-to-flag.
+///     Kept separate from ChatMessageHandler so that S-rank/self chat traffic never touches auto-movement
+///     
 ///     TODO : Figure out how to manage S-rank auto movement and wait to engage. Finding waiting area is currently my biggest gap.
-
+/// </summary>
 internal unsafe static class ConductorFlagHandler
 {
     internal static ArrivalData LastMessageLoc = null;
@@ -26,7 +31,8 @@ internal unsafe static class ConductorFlagHandler
         LastMessageLoc = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, 0, isConductorTriggered: true);
 
         if(!P.Config.AutoTeleport) return;
-
+    //Cross-zone and instance-switch teleports fire immediately, same as before this feature existed
+    //the actual teleport cast already waits for combat to end elsewhere (HuntTrainAssistant.Framework_Update).
         if(m.TerritoryType.RowId != Svc.ClientState.TerritoryType)
         {
             TeleportTo(m, nearestAetheryte.Value, P.Config.AutoSwitchInstanceToOne ? 1 : 0);
@@ -90,6 +96,10 @@ internal unsafe static class ConductorFlagHandler
 
     private static void DecideWalkOrTeleport(MapLinkPayload m, Aetheryte nearestAetheryte)
     {
+        // A new flag supersedes whatever movement was previously queued -- e.g. still hunting for a
+        // target on the last A-rank when the next one's already posted. Stop that and go to the new spot.
+        P.TaskManager.Abort();
+
         var flagWorldPos = MapManager.GetFlagWorldPosition(m);
         if(flagWorldPos == null)
         {
@@ -119,6 +129,9 @@ internal unsafe static class ConductorFlagHandler
 
     private static void TeleportTo(MapLinkPayload m, Aetheryte nearestAetheryte, int instance)
     {
+        // same reasoning as DecideWalkOrTeleport -- don't leave a stale targeting/dismount sequence
+        // running for the previous flag once we've decided to act on a new one.
+        P.TaskManager.Abort();
         P.TeleportTo = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, instance, isConductorTriggered: true);
         Utils.DelayTeleport();
         Notify.Info("Engaging Autoteleport");

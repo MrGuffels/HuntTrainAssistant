@@ -28,6 +28,11 @@ public static unsafe class TaskMount
         {
             return true;
         }
+        if(P.Config.DismountGraceEnabled && !EzThrottler.Check("DismountGrace"))
+        {
+            // just dismounted near an A-rank -- give combat a chance to actually start before remounting
+            return true;
+        }
         if(P.Config.Mount == -1) return true;
         if(Svc.Condition[ConditionFlag.MountOrOrnamentTransition] || Svc.Condition[ConditionFlag.Casting])
         {

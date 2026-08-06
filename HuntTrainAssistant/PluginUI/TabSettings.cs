@@ -57,6 +57,15 @@ public unsafe class TabSettings
 										ImGui.Indent();
                     ImGui.SetNextItemWidth(150f);
                     ImGui.DragFloat("Stop distance (yalms)##stopneararank", ref P.Config.StopNearARankDistance, 1f, 1f, 100f);
+										ImGui.Checkbox("Delay remounting after dismounting near an A-rank", ref P.Config.DismountGraceEnabled);
+										if(P.Config.DismountGraceEnabled)
+										{
+												ImGui.Indent();
+												ImGuiEx.Text("Gives combat time to actually start before we'd otherwise remount and wander off.");
+                        ImGui.SetNextItemWidth(150f);
+                        ImGuiEx.SliderIntAsFloat("Delay (ms)##dismountgrace", ref P.Config.DismountGraceDuration, 0, 30000);
+                        ImGui.Unindent();
+										}
                     ImGui.Unindent();
 								}
                 ImGui.Unindent();
