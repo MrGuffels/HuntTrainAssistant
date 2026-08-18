@@ -2,6 +2,7 @@ using Dalamud.Game.Text.SeStringHandling.Payloads;
 using ECommons.CSExtensions;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.Sheets;
+using HuntTrainAssistant.DataStructures;
 using HuntTrainAssistant.Tasks;
 
 namespace HuntTrainAssistant;
@@ -35,6 +36,12 @@ internal unsafe static class ConductorFlagHandler
     //the actual teleport cast already waits for combat to end elsewhere (HuntTrainAssistant.Framework_Update).
         if(m.TerritoryType.RowId != Svc.ClientState.TerritoryType)
         {
+            if(!IsCrossExpansionFlagAllowed(m))
+            {
+                PluginLog.Debug("Ignoring conductor flag: outside current expansion and not a known S-rank derail");
+                return;
+            }
+
             TeleportTo(m, nearestAetheryte.Value, P.Config.AutoSwitchInstanceToOne ? 1 : 0);
             return;
         }
@@ -72,6 +79,21 @@ internal unsafe static class ConductorFlagHandler
         _wasInCombat = inCombat;
     }
 
+    /// <summary>
+    ///     Blocks cross-expansion conductor flags unless it matches a S/SS rank Sonar recently reported
+    ///     at that spot (an S-rank derail) -- see <see cref="Services.SonarMonitor.IsKnownSRankLocation"/>.
+    /// </summary>
+    private static bool IsCrossExpansionFlagAllowed(MapLinkPayload m)
+    {
+        if(!P.Config.RestrictAutoTeleportToCurrentExpansion) return true;
+
+        var targetEx = S.SonarMonitor.ParseExpansion(m.TerritoryType.RowId);
+        var currentEx = S.SonarMonitor.ParseExpansion(Svc.ClientState.TerritoryType);
+        if(targetEx == Expansion.Unknown || currentEx == Expansion.Unknown || targetEx == currentEx) return true;
+
+        return P.Config.AllowSRankDerailAcrossExpansions && S.SonarMonitor.IsKnownSRankLocation(m);
+    }
+
     private static void OpenMapIfNeeded(MapLinkPayload m)
     {
         var flag = AgentMap.Instance()->FlagMapMarker;
@@ -105,7 +127,7 @@ internal unsafe static class ConductorFlagHandler
         {
             // can't compare distances, fall back to walking from where we are
             TaskMount.EnqueueIfEnabled();
-            TaskMoveToFlag.EnqueueIfEnabled();
+            TaskMoveToFlag.EnqueueIfEnabled(flagWorldPos);
             TaskStopNearARank.EnqueueIfEnabled();
             return;
         }
@@ -118,7 +140,7 @@ internal unsafe static class ConductorFlagHandler
         if(walkDistance <= teleportDistance)
         {
             TaskMount.EnqueueIfEnabled();
-            TaskMoveToFlag.EnqueueIfEnabled();
+            TaskMoveToFlag.EnqueueIfEnabled(flagWorldPos);
             TaskStopNearARank.EnqueueIfEnabled();
         }
         else

@@ -19,4 +19,5 @@ public static class ServiceManager
 		public static Notificator Notificator;
 		public static LFGService LFGService;
 		public static AutoRetainerIPC AutoRetainerIPC;
+		public static VNavmeshIPC VNavmeshIPC;
 }

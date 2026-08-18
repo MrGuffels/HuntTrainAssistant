@@ -21,6 +21,12 @@ public class SonarMonitor : IDisposable
     public ArrivalData Continuation = null;
     public string[] InstanceNumbers = ["", "", ""];
 
+    // Recent S/SS sightings reported by Sonar, kept so a conductor's flag call outside the current
+    // expansion can be recognized as a legit S-rank derail instead of a stray/errant flag.
+    private readonly List<(uint WorldId, uint TerritoryId, float X, float Y, DateTime Seen)> recentSRankSightings = [];
+    private static readonly TimeSpan SRankSightingTtl = TimeSpan.FromMinutes(15);
+    private const float SRankSightingTolerance = 3f;
+
     private SonarMonitor()
     {
         Svc.Chat.ChatMessage += Chat_ChatMessage;
@@ -190,6 +196,10 @@ public class SonarMonitor : IDisposable
             var link = cm.Message.Payloads.OfType<MapLinkPayload>().FirstOrDefault();
             var aetheryte = MapManager.GetNearestAetheryte(link);
             PluginLog.Information($"World={world}, rank={rank}, ex={ex}, aetheryte={aetheryte.GetPlaceName()}");
+            if(world != null && link != null && rank.EqualsAny(Rank.S, Rank.SS))
+            {
+                TrackSRankSighting(world.Value.RowId, link);
+            }
             if(world != null && rank != Rank.Unknown && ex != Expansion.Unknown && aetheryte != null)
             {
                 if(P.Config.AutoVisitModifyChat)
@@ -245,14 +255,42 @@ public class SonarMonitor : IDisposable
         return Expansion.Unknown;
     }
 
-    public Expansion ParseExpansion(MapLinkPayload x)
+    public Expansion ParseExpansion(MapLinkPayload x) => ParseExpansionFromBg(x.TerritoryType.ValueNullable?.Bg.ToString());
+
+    public Expansion ParseExpansion(uint territoryTypeId) =>
+        ParseExpansionFromBg(Svc.Data.GetExcelSheet<TerritoryType>().GetRowOrDefault(territoryTypeId)?.Bg.ToString());
+
+    private Expansion ParseExpansionFromBg(string? bg)
     {
-        var bg = x.TerritoryType.ValueNullable?.Bg.ToString();
+        if(bg == null) return Expansion.Unknown;
         if(bg.StartsWith("ex1")) return Expansion.Heavensward;
         if(bg.StartsWith("ex2")) return Expansion.Stormblood;
         if(bg.StartsWith("ex3")) return Expansion.Shadowbringers;
         if(bg.StartsWith("ex4")) return Expansion.Endwalker;
         if(bg.StartsWith("ex5")) return Expansion.Dawntrail;
         return Expansion.ARealmReborn;
+    }
+
+    private void TrackSRankSighting(uint worldId, MapLinkPayload link)
+    {
+        PruneSRankSightings();
+        recentSRankSightings.Add((worldId, link.TerritoryType.RowId, link.RawX / 1000f, link.RawY / 1000f, DateTime.UtcNow));
+    }
+
+    private void PruneSRankSightings() => recentSRankSightings.RemoveAll(x => DateTime.UtcNow - x.Seen > SRankSightingTtl);
+
+    /// <summary>
+    ///     Whether a conductor's flag matches a S/SS rank Sonar has recently reported at that spot --
+    ///     used to tell a legit S-rank derail apart from a stray flag when it lands outside the
+    ///     current expansion.
+    /// </summary>
+    public bool IsKnownSRankLocation(MapLinkPayload m)
+    {
+        PruneSRankSightings();
+        var pos = new Vector2(m.RawX / 1000f, m.RawY / 1000f);
+        return recentSRankSightings.Any(x =>
+            x.WorldId == Player.CurrentWorldId
+            && x.TerritoryId == m.TerritoryType.RowId
+            && Vector2.Distance(new(x.X, x.Y), pos) <= SRankSightingTolerance);
     }
 }

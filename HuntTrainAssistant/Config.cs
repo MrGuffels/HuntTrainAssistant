@@ -28,6 +28,8 @@ public class Config
     public bool AutoVisitCrossDC = false;
     public bool AutoVisitModifyChat = true;
     public Dictionary<Rank, List<Expansion>> AutoVisitExpansionsBlacklist = [];
+    public bool RestrictAutoTeleportToCurrentExpansion = false;
+    public bool AllowSRankDerailAcrossExpansions = true;
     public List<uint> AetheryteBlacklist = [148];
     public bool EnableSonarInstanceSwitching = false;
     public bool AutoSwitchInstanceTwoRanks = false;

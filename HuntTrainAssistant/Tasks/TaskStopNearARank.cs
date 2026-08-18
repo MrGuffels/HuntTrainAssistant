@@ -40,13 +40,17 @@ public static unsafe class TaskStopNearARank
 
         if(planarDistance <= P.Config.StopNearARankDistance)
         {
-            Chat.ExecuteCommand("/vnav stop");
+            S.VNavmeshIPC.Stop();
             return true;
         }
 
+        // TryMoveTo no-ops while a previous flyto is still being computed, so this throttled retry
+        // never stacks a new route on top of an in-flight one -- that overlap was what caused the
+        // jerky backtrack (the new route started from wherever the player was when the old,
+        // now-discarded computation began, not where they'd since moved to).
         if(EzThrottler.Throttle("StopNearARankChaseLiveTarget", 1500))
         {
-            Chat.ExecuteCommand($"/vnav flyto {nearest.Position.X} {nearest.Position.Y} {nearest.Position.Z}");
+            S.VNavmeshIPC.TryMoveTo(nearest.Position, true);
         }
 
         return false;

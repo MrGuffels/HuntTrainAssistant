@@ -33,6 +33,17 @@ public unsafe class TabSettings
 								ImGui.Checkbox("Autoteleport to different zone", ref P.Config.AutoTeleport);
                 ImGui.Indent();
                 ImGui.Checkbox("Auto-switch to instance 1 after teleporting", ref P.Config.AutoSwitchInstanceToOne);
+                ImGui.Checkbox("Don't auto-teleport to a conductor's flag outside the current expansion", ref P.Config.RestrictAutoTeleportToCurrentExpansion);
+                if(P.Config.RestrictAutoTeleportToCurrentExpansion)
+                {
+                    ImGui.Indent();
+                    ImGui.Checkbox("...unless it's a known S-rank derail (matches a recent Sonar S/SS sighting)", ref P.Config.AllowSRankDerailAcrossExpansions);
+                    if(P.Config.AllowSRankDerailAcrossExpansions && !P.Config.SonarIntegration)
+                    {
+                        ImGuiEx.TextWrapped(ImGuiColors.DalamudYellow, "Enable Sonar integration below to actually detect derails -- without it every out-of-expansion flag will be blocked.");
+                    }
+                    ImGui.Unindent();
+                }
 								ImGui.Checkbox("Mount up after arriving to your teleport destination", ref P.Config.UseMount);
 								if(P.Config.UseMount)
 								{
