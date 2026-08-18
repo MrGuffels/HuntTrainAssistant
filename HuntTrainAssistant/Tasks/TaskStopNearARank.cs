@@ -18,21 +18,38 @@ public static unsafe class TaskStopNearARank
         }
     }
 
+    /// <summary>
+    ///     While the flag-chase is still en route, redirect toward the A-rank's live position once it's
+    ///     targetable -- the flag can be stale/off from where the mob actually spawned or wandered to.
+    ///     Distance is measured past the mob's hitbox edge (planar) rather than raw 3D distance so the
+    ///     stop range scales with mob size instead of one flat number that over/undershoots.
+    /// </summary>
     private static bool WaitUntilNearARank()
     {
         if(!IsScreenReady() || !Player.Interactable) return false;
 
-        var nearestDistance = Svc.Objects
+        var nearest = Svc.Objects
             .OfType<IBattleNpc>()
             .Where(x => x.IsTargetable && Utils.IsNpcIdInARankList(x.NameId))
-            .Select(x => Vector3.Distance(Player.Position, x.Position))
-            .DefaultIfEmpty(float.MaxValue)
-            .Min();
+            .OrderBy(x => Vector3.Distance(Player.Position, x.Position))
+            .FirstOrDefault();
 
-        if(nearestDistance > P.Config.StopNearARankDistance) return false;
+        if(nearest == null) return false;
 
-        Chat.ExecuteCommand("/vnav stop");
-        return true;
+        var planarDistance = Vector2.Distance(new(Player.Position.X, Player.Position.Z), new(nearest.Position.X, nearest.Position.Z)) - nearest.HitboxRadius;
+
+        if(planarDistance <= P.Config.StopNearARankDistance)
+        {
+            Chat.ExecuteCommand("/vnav stop");
+            return true;
+        }
+
+        if(EzThrottler.Throttle("StopNearARankChaseLiveTarget", 1500))
+        {
+            Chat.ExecuteCommand($"/vnav flyto {nearest.Position.X} {nearest.Position.Y} {nearest.Position.Z}");
+        }
+
+        return false;
     }
 
     /// <summary>
