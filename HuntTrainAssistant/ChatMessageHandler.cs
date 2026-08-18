@@ -11,11 +11,18 @@ using FFXIVClientStructs.FFXIV.Client.UI.Shell;
 using ECommons.CSExtensions;
 using ECommons.DalamudServices.Legacy;
 using Dalamud.Game.Chat;
+using System.Text.RegularExpressions;
 
 namespace HuntTrainAssistant;
 
-internal unsafe static class ChatMessageHandler
+internal unsafe static partial class ChatMessageHandler
 {
+    // Matches boss/conductor health-percent status broadcasts, e.g. "Chortitude: [99.2%]".
+    // These still carry a map link to the conductor's current position, but they're periodic
+    // status pings, not new flags -- reacting to them re-triggers movement for no reason.
+    [GeneratedRegex(@"\[\d{1,3}(\.\d+)?%\]")]
+    private static partial Regex HealthPercentRegex();
+
     internal static void Chat_ChatMessage(IHandleableChatMessage cm)
     {
         var conductorNames = P.Config.Conductors.Select(x => x.Name).ToList();
@@ -29,7 +36,7 @@ internal unsafe static class ChatMessageHandler
                 if (x is MapLinkPayload m)
                 {
                     isMapLink = true;
-                    if (isConductorMessage && (Utils.IsInHuntingTerritory() || P.Config.Debug))
+                    if (isConductorMessage && (Utils.IsInHuntingTerritory() || P.Config.Debug) && !HealthPercentRegex().IsMatch(cm.Message.TextValue))
                     {
                         ConductorFlagHandler.OnConductorFlag(m);
                     }
