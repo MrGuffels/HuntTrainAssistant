@@ -8,10 +8,21 @@ using System.Linq;
 namespace HuntTrainAssistant.Tasks;
 public static unsafe class TaskStopNearARank
 {
+    /// <summary>
+    ///     Last position a flyto was actually issued for. Re-pathing on every throttle tick regardless
+    ///     of whether the mob has moved re-triggers vnavmesh's computation (0.5s+ for anything but a
+    ///     trivial route) while the player keeps flying the old path in the meantime -- so the new path
+    ///     lands starting from a position the player has since flown past, causing a visible backtrack.
+    ///     Only reissuing once the mob has actually drifted keeps that recompute rare instead of a
+    ///     fixed-timer habit.
+    /// </summary>
+    private static Vector3? _lastCommandedTarget;
+
     public static void EnqueueIfEnabled()
     {
         if(P.Config.StopNearARankEnabled)
         {
+            _lastCommandedTarget = null;
             P.TaskManager.Enqueue(WaitUntilNearARank, "Wait until near A-rank", new(timeLimitMS: 120000));
             P.TaskManager.Enqueue(TargetNearestARank, "Target A-rank", new(timeLimitMS: 15000));
             P.TaskManager.Enqueue(StopAndDismount, "Stop and dismount", new(timeLimitMS: 15000));
@@ -41,16 +52,17 @@ public static unsafe class TaskStopNearARank
         if(planarDistance <= P.Config.StopNearARankDistance)
         {
             S.VNavmeshIPC.Stop();
+            _lastCommandedTarget = null;
             return true;
         }
 
-        // TryMoveTo no-ops while a previous flyto is still being computed, so this throttled retry
-        // never stacks a new route on top of an in-flight one -- that overlap was what caused the
-        // jerky backtrack (the new route started from wherever the player was when the old,
-        // now-discarded computation began, not where they'd since moved to).
-        if(EzThrottler.Throttle("StopNearARankChaseLiveTarget", 1500))
+        // Only re-path once the mob has drifted meaningfully from the last commanded target, and
+        // never while vnavmesh is still computing the previous route -- both a fixed-timer reissue
+        // and an overlapping call cause the same jerky backtrack, just via different triggers.
+        var driftedEnough = _lastCommandedTarget is not { } last || Vector3.Distance(last, nearest.Position) > 3f;
+        if(driftedEnough && EzThrottler.Throttle("StopNearARankChaseLiveTarget", 1500) && S.VNavmeshIPC.TryMoveTo(nearest.Position, true))
         {
-            S.VNavmeshIPC.TryMoveTo(nearest.Position, true);
+            _lastCommandedTarget = nearest.Position;
         }
 
         return false;
