@@ -60,6 +60,7 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
             {
                 TaskChangeInstanceAfterTeleport.Enqueue(TeleportTo.Instance, TeleportTo.Aetheryte.Territory.RowId);
             }
+            TaskNotifySRankArrival.EnqueueIfEnabled(TeleportTo);
             TaskMount.EnqueueIfEnabled();
             if(TeleportTo.IsConductorTriggered)
             {
@@ -170,6 +171,7 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
                     if(Utils.CheckMultiMode()) return;
                     TaskChangeInstanceAfterTeleport.Enqueue(TeleportTo.Instance, (int)TeleportTo.Aetheryte.Territory.RowId);
                 }
+                TaskNotifySRankArrival.EnqueueIfEnabled(TeleportTo);
                 TaskMount.EnqueueIfEnabled();
                 if(TeleportTo.IsConductorTriggered)
                 {

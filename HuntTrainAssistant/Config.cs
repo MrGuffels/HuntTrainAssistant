@@ -44,6 +44,8 @@ public class Config
     public string AudioAlertPath = "";
     public int AudioThrottle = 500;
     public bool FlashTaskbar = false;
+    public bool NotifySRankArrival = false;
+    public bool NotifySRankArrivalForeground = false;
     public bool TrayNotification = true;
     public bool ExecuteMacroOnFlag = false;
     public int MacroIndex = 0;

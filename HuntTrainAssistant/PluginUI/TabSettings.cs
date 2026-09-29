@@ -133,6 +133,15 @@ public unsafe class TabSettings
                 ImGui.Unindent();
                 ImGui.Checkbox("Flash taskbar on conductor message", ref P.Config.FlashTaskbar);
 								ImGui.Checkbox("Show tray popup notification on conductor message", ref P.Config.TrayNotification);
+								ImGui.Checkbox("Show tray popup notification when S-rank teleport finishes", ref P.Config.NotifySRankArrival);
+								ImGuiEx.HelpMarker("Fires once you've landed (and switched instance, if needed) after an S/SS-rank teleport. Only shown while the game window is not focused. Also flashes the taskbar if that option is on.");
+								if(P.Config.NotifySRankArrival)
+								{
+										ImGui.Indent();
+										ImGui.Checkbox("Also bring FFXIV to foreground", ref P.Config.NotifySRankArrivalForeground);
+										ImGuiEx.HelpMarker("Uses NotificationMaster's bring-to-foreground. Windows doesn't always allow this, so it may occasionally do nothing.");
+										ImGui.Unindent();
+								}
             })
 						.Section("Triggers")
 						.Widget(() =>
