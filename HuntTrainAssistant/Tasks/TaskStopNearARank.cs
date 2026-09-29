@@ -1,12 +1,11 @@
 using Dalamud.Game.ClientState.Objects.Types;
-using ECommons.Automation;
 using ECommons.GameHelpers;
 using ECommons.Throttlers;
-using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Common.Component.BGCollision;
 using System.Linq;
 
 namespace HuntTrainAssistant.Tasks;
-public static unsafe class TaskStopNearARank
+public static class TaskStopNearARank
 {
     /// <summary>
     ///     Last position a flyto was actually issued for. Re-pathing on every throttle tick regardless
@@ -18,14 +17,32 @@ public static unsafe class TaskStopNearARank
     /// </summary>
     private static Vector3? _lastCommandedTarget;
 
-    public static void EnqueueIfEnabled()
+    private const int LosSearchPositions = 8;
+    private const float LosSearchRadius = 5f;
+    private static Vector3? _losMoveTarget;
+    private static int _losSearchAttempt;
+
+    /// <summary>
+    ///     The flagged destination, so the live-mob search below only considers A-ranks actually near
+    ///     it -- otherwise an unrelated A-rank that happens to be closer to the player (e.g. one Sonar
+    ///     just reported elsewhere in the zone, still on cooldown/being saved for later) hijacks the
+    ///     flight instead of the one that was actually flagged.
+    /// </summary>
+    private const float FlagSearchRadius = 30f;
+    private static Vector3? _flagPos;
+
+    public static void EnqueueIfEnabled(Vector3? flagPos = null)
     {
         if(P.Config.StopNearARankEnabled)
         {
             _lastCommandedTarget = null;
+            _losMoveTarget = null;
+            _losSearchAttempt = 0;
+            _flagPos = flagPos;
             P.TaskManager.Enqueue(WaitUntilNearARank, "Wait until near A-rank", new(timeLimitMS: 120000));
             P.TaskManager.Enqueue(TargetNearestARank, "Target A-rank", new(timeLimitMS: 15000));
             P.TaskManager.Enqueue(StopAndDismount, "Stop and dismount", new(timeLimitMS: 15000));
+            P.TaskManager.Enqueue(EnsureLineOfSight, "Ensure line of sight", new(timeLimitMS: 20000));
         }
     }
 
@@ -39,11 +56,7 @@ public static unsafe class TaskStopNearARank
     {
         if(!IsScreenReady() || !Player.Interactable) return false;
 
-        var nearest = Svc.Objects
-            .OfType<IBattleNpc>()
-            .Where(x => x.IsTargetable && Utils.IsNpcIdInARankList(x.NameId))
-            .OrderBy(x => Vector3.Distance(Player.Position, x.Position))
-            .FirstOrDefault();
+        var nearest = NearestARank();
 
         if(nearest == null) return false;
 
@@ -76,11 +89,7 @@ public static unsafe class TaskStopNearARank
     {
         if(!IsScreenReady() || !Player.Interactable) return false;
 
-        var nearest = Svc.Objects
-            .OfType<IBattleNpc>()
-            .Where(x => x.IsTargetable && Utils.IsNpcIdInARankList(x.NameId))
-            .OrderBy(x => Vector3.Distance(Player.Position, x.Position))
-            .FirstOrDefault();
+        var nearest = NearestARank();
         if(nearest == null) return false;
 
         if(Svc.Targets.Target?.GameObjectId == nearest.GameObjectId) return true;
@@ -90,30 +99,67 @@ public static unsafe class TaskStopNearARank
 
         return false;
     }
+
+    private static bool StopAndDismount() => Utils.TryDismount("StopNearARankDismount");
+
     /// <summary>
-    ///     Dismounting while flying just starts the character falling -- it isn't actually dismounted
-    ///     until that fall finishes, so we have to keep polling instead of firing-and-forgetting.
+    ///     The stop distance is a flat radius around the mob, so it can easily land us behind terrain
+    ///     with no line of sight -- e.g. the far side of a hill or rock the mob spawned next to. If so,
+    ///     walk to the nearest of a ring of points around the mob that does have line of sight instead
+    ///     of sitting there unable to engage.
     /// </summary>
-    private static bool StopAndDismount()
+    private static bool EnsureLineOfSight()
     {
-        if(!Svc.Condition[ConditionFlag.Mounted]) return true;
+        if(!IsScreenReady() || !Player.Interactable) return false;
 
-        // still playing out the dismount/fall animation from a previous press
-        if(Svc.Condition[ConditionFlag.MountOrOrnamentTransition] || IsUnmounting()) return false;
+        var target = NearestARank();
+        if(target == null) return true;
 
-        if(!Player.IsAnimationLocked && EzThrottler.Throttle("StopNearARankDismount", 1000))
+        if(HasLineOfSight(target.Position))
         {
-            Chat.ExecuteGeneralAction(23);
-            if(P.Config.DismountGraceEnabled)
-                EzThrottler.Throttle("DismountGrace", P.Config.DismountGraceDuration, true);
+            S.VNavmeshIPC.Stop();
+            _losMoveTarget = null;
+            return true;
+        }
+
+        if(_losMoveTarget is { } dest)
+        {
+            var planarDistance = Vector2.Distance(new(Player.Position.X, Player.Position.Z), new(dest.X, dest.Z));
+            if(planarDistance > 2f) return false; // still walking there
+            _losMoveTarget = null; // arrived but somehow still no LoS -- fall through and try another spot
+        }
+
+        // Ran out of ring positions to try -- give up rather than blocking the task queue forever.
+        if(_losSearchAttempt >= LosSearchPositions) return true;
+
+        var angle = _losSearchAttempt * 2 * MathF.PI / LosSearchPositions;
+        _losSearchAttempt++;
+        var probeXZ = target.Position + new Vector3(LosSearchRadius * MathF.Cos(angle), 0, LosSearchRadius * MathF.Sin(angle));
+        var probe = S.VNavmeshIPC.PointOnFloor(probeXZ with { Y = 1024f }, false, 3f);
+        if(probe is { } point && HasLineOfSight(target.Position, point) &&
+           EzThrottler.Throttle("StopNearARankLosMove", 500) && S.VNavmeshIPC.TryMoveTo(point, false))
+        {
+            _losMoveTarget = point;
         }
 
         return false;
     }
 
-    private static bool IsUnmounting()
+    private static IBattleNpc NearestARank() =>
+        Svc.Objects
+            .OfType<IBattleNpc>()
+            .Where(x => x.IsTargetable && Utils.IsNpcIdInARankList(x.BaseId))
+            .Where(x => _flagPos is not { } flag || Vector3.Distance(x.Position, flag) <= FlagSearchRadius)
+            .OrderBy(x => Vector3.Distance(Player.Position, x.Position))
+            .FirstOrDefault();
+
+    private static bool HasLineOfSight(Vector3 targetPos, Vector3? fromPos = null)
     {
-        BattleChara* battleChara = (BattleChara*)(Svc.Objects[0]?.Address ?? 0);
-        return battleChara != null && (battleChara->Mount.Flags & 1) == 1;
+        var origin = (fromPos ?? Player.Position) + new Vector3(0, 2, 0);
+        var destination = targetPos + new Vector3(0, 2, 0);
+        var direction = destination - origin;
+        var distance = direction.Length();
+        if(distance <= 0.01f) return true;
+        return !BGCollisionModule.RaycastMaterialFilter(origin, direction / distance, out _, distance);
     }
 }

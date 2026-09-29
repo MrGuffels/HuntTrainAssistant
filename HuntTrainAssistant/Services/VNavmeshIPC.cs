@@ -16,6 +16,7 @@ public class VNavmeshIPC
     [EzIPC("Path.IsRunning")] public readonly Func<bool> IsRunning;
     [EzIPC("SimpleMove.PathfindAndMoveTo")] public readonly Func<Vector3, bool, bool> PathfindAndMoveTo;
     [EzIPC("Path.Stop")] public readonly Action Stop;
+    [EzIPC("Query.Mesh.PointOnFloor")] public readonly Func<Vector3, bool, float, Vector3?> PointOnFloor;
 
     /// <summary>
     ///     Whether vnavmesh is currently computing a route. A new PathfindAndMoveTo call issued while

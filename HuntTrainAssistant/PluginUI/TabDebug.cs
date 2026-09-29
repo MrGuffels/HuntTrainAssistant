@@ -63,7 +63,7 @@ public unsafe class TabDebug
 				ImGuiEx.Text($"Killed mobs: {P.KilledARanks.Print(",")}");
 				if(ImGui.Button("Add killed mob"))
 				{
-						P.KilledARanks.Add(Enum.GetValues<DawntrailARank>().GetRandom());
+						P.KilledARanks.Add(Svc.Data.GetExcelSheet<NotoriousMonster>().Where(x => x.Rank == 2).GetRandom().BNpcBase.RowId);
 				}
 				ImGuiEx.Text($"Is moving: {P.IsMoving}");
 				if (ImGui.CollapsingHeader("Territory"))

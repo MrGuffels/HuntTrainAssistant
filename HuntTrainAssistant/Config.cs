@@ -14,6 +14,8 @@ public class Config
     public float TeleportOverheadDistance = 90f;
     public bool StopNearARankEnabled = true;
     public float StopNearARankDistance = 30f;
+    public bool AutoMoveToSRank = false;
+    public float StopNearSRankDistance = 50f;
     public bool DismountGraceEnabled = true;
     public int DismountGraceDuration = 5000;
     public bool SuppressChatOtherPlayers = true;

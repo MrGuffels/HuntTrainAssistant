@@ -71,7 +71,7 @@ public class SonarMonitor : IDisposable
 
                 if(!Svc.Condition[ConditionFlag.BoundByDuty] && !Svc.Condition[ConditionFlag.BoundByDuty56] && !Svc.Condition[ConditionFlag.InDutyQueue] && (!P.Config.WorldBlacklist.Contains(worldId) || Player.CurrentWorldId == worldId))
                 {
-                    HandleAutoTeleport(message.huntWorld, aetheryte.Value, payload, false, rank, ParseExpansion(payload), message.instance);
+                    HandleAutoTeleport(message.huntWorld, aetheryte.Value, payload, false, rank, ParseExpansion(payload), message.instance, sourceMessage: $"HuntAlerts: {message}");
                 }
             }
         }
@@ -123,11 +123,11 @@ public class SonarMonitor : IDisposable
     {
         if(Payloads.TryGetFirst(x => x.ID == commandId, out var info))
         {
-            HandleAutoTeleport(info.World, info.Aetheryte, info.Link, true, default, default, info.Instance);
+            HandleAutoTeleport(info.World, info.Aetheryte, info.Link, true, default, default, info.Instance, sourceMessage: $"[Go To] link click: {message}");
         }
     }
 
-    public void HandleAutoTeleport(string world, Aetheryte aetheryte, MapLinkPayload payload, bool force, Rank rank, Expansion ex, int instance)
+    public void HandleAutoTeleport(string world, Aetheryte aetheryte, MapLinkPayload payload, bool force, Rank rank, Expansion ex, int instance, string sourceMessage = null)
     {
         if(Utils.CheckMultiMode()) return;
         if(!Player.Interactable) return;
@@ -144,7 +144,7 @@ public class SonarMonitor : IDisposable
             if(Player.CurrentWorld == world)
             {
                 DuoLog.Information($"Same-world teleport: {world}");
-                P.TeleportTo = ArrivalData.CreateOrNull(aetheryte, aetheryte.Territory.RowId, instance);
+                P.TeleportTo = ArrivalData.CreateOrNull(aetheryte, aetheryte.Territory.RowId, instance, rank: rank, link: payload, sourceMessage: sourceMessage);
                 if(payload != null) Svc.GameGui.OpenMapWithMapLink(payload);
                 EzConfigGui.Window.IsOpen = true;
             }
@@ -159,6 +159,9 @@ public class SonarMonitor : IDisposable
                         Continuation = new(aetheryte, aetheryte.Territory.RowId, instance)
                         {
                             World = world,
+                            Rank = rank,
+                            Link = payload,
+                            SourceMessage = sourceMessage,
                         };
                         DuoLog.Information($"Cross-world teleport: {world}");
                         EzConfigGui.Window.IsOpen = true;
@@ -170,6 +173,9 @@ public class SonarMonitor : IDisposable
                         Continuation = new(aetheryte, aetheryte.Territory.RowId, instance)
                         {
                             World = world,
+                            Rank = rank,
+                            Link = payload,
+                            SourceMessage = sourceMessage,
                         };
                         DuoLog.Information($"Cross-DC teleport: {world}");
                         EzConfigGui.Window.IsOpen = true;
@@ -217,7 +223,7 @@ public class SonarMonitor : IDisposable
                 }
                 if(world.Value.RowId == Player.CurrentWorldId || !P.Config.WorldBlacklist.Contains(world.Value.RowId))
                 {
-                    HandleAutoTeleport(world.Value.Name.ToString(), aetheryte.Value, link, false, rank, ex, ParseInstanceNumber(cm.Message.ToString()));
+                    HandleAutoTeleport(world.Value.Name.ToString(), aetheryte.Value, link, false, rank, ex, ParseInstanceNumber(cm.Message.ToString()), sourceMessage: messageText);
                 }
             }
         }

@@ -25,7 +25,7 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
     internal Vector3 LastPosition = Vector3.Zero;
     public TaskManager TaskManager;
     public int LastInstance = 0;
-    public HashSet<DawntrailARank> KilledARanks = [];
+    public HashSet<uint> KilledARanks = [];
 
     public HuntTrainAssistant(IDalamudPluginInterface pi)
     {
@@ -63,8 +63,17 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
             TaskMount.EnqueueIfEnabled();
             if(TeleportTo.IsConductorTriggered)
             {
-                TaskMoveToFlag.EnqueueIfEnabled();
-                TaskStopNearARank.EnqueueIfEnabled();
+                var flagPos = TeleportTo.Link != null ? MapManager.GetFlagWorldPosition(TeleportTo.Link) : null;
+                PluginLog.Information($"[QueueMove] Moving to flag after teleport, from message: \"{TeleportTo.SourceMessage}\"");
+                TaskMoveToFlag.EnqueueIfEnabled(flagPos);
+                TaskStopNearARank.EnqueueIfEnabled(flagPos);
+            }
+            else if(TeleportTo.Rank.EqualsAny(Rank.S, Rank.SS) && P.Config.AutoMoveToSRank)
+            {
+                var srankPos = TeleportTo.Link != null ? MapManager.GetFlagWorldPosition(TeleportTo.Link) : null;
+                PluginLog.Information($"[QueueMove] Moving toward S-rank after teleport, from message: \"{TeleportTo.SourceMessage}\"");
+                TaskMoveToFlag.EnqueueIfEnabled(srankPos, force: true);
+                TaskStopNearSRank.EnqueueIfEnabled(srankPos);
             }
             PluginLog.Debug($"TeleportTo reset (2)");
             TeleportTo = null;
@@ -95,10 +104,10 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
         {
             foreach(var x in Svc.Objects)
             {
-                if(x is IBattleNpc b && b.CurrentHp == 0 && Utils.IsNpcIdInARankList(b.NameId) && !KilledARanks.Contains((DawntrailARank)b.NameId))
+                if(x is IBattleNpc b && b.CurrentHp == 0 && Utils.IsNpcIdInARankList(b.BaseId) && !KilledARanks.Contains(b.BaseId))
                 {
-                    PluginLog.Debug($"Added killed A rank: {(DawntrailARank)b.NameId}. Killed A ranks: {KilledARanks.Print()}");
-                    KilledARanks.Add((DawntrailARank)b.NameId);
+                    PluginLog.Debug($"Added killed A rank: {b.BaseId}. Killed A ranks: {KilledARanks.Print()}");
+                    KilledARanks.Add(b.BaseId);
                 }
             }
         }
@@ -166,6 +175,12 @@ public unsafe class HuntTrainAssistant : IDalamudPlugin
                 {
                     TaskMoveToFlag.EnqueueIfEnabled();
                     TaskStopNearARank.EnqueueIfEnabled();
+                }
+                else if(TeleportTo.Rank.EqualsAny(Rank.S, Rank.SS) && P.Config.AutoMoveToSRank)
+                {
+                    var srankPos = TeleportTo.Link != null ? MapManager.GetFlagWorldPosition(TeleportTo.Link) : null;
+                    TaskMoveToFlag.EnqueueIfEnabled(srankPos, force: true);
+                    TaskStopNearSRank.EnqueueIfEnabled(srankPos);
                 }
                 PluginLog.Debug($"TeleportTo reset (1)");
                 TeleportTo = null;

@@ -12,9 +12,10 @@ public static unsafe class TaskMoveToFlag
     ///     running (e.g. Sonar or another player flagging a different spot on the map), which would
     ///     otherwise send us chasing the wrong location entirely.
     /// </param>
-    public static void EnqueueIfEnabled(Vector3? worldPos = null)
+    /// <param name="force">Enqueue regardless of <see cref="Config.UseMoveToFlag"/> -- used by callers gated on their own setting instead (e.g. S-rank auto-move).</param>
+    public static void EnqueueIfEnabled(Vector3? worldPos = null, bool force = false)
     {
-        if(P.Config.UseMoveToFlag)
+        if(force || P.Config.UseMoveToFlag)
         {
             Utils.DelayPathing();
             P.TaskManager.Enqueue(() => IsScreenReady() && Player.Interactable, "Wait for player");

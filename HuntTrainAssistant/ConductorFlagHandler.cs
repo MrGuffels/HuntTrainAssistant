@@ -18,10 +18,10 @@ internal unsafe static class ConductorFlagHandler
 {
     internal static ArrivalData LastMessageLoc = null;
 
-    private static (MapLinkPayload Link, Aetheryte NearestAetheryte)? _pendingFlag;
+    private static (MapLinkPayload Link, Aetheryte NearestAetheryte, string SourceMessage)? _pendingFlag;
     private static bool _wasInCombat;
 
-    internal static void OnConductorFlag(MapLinkPayload m)
+    internal static void OnConductorFlag(MapLinkPayload m, string sourceMessage = null)
     {
         var nearestAetheryte = MapManager.GetNearestAetheryte(m);
         if(nearestAetheryte == null) return;
@@ -29,7 +29,7 @@ internal unsafe static class ConductorFlagHandler
         if(P.Config.AutoOpenMap)
             OpenMapIfNeeded(m);
 
-        LastMessageLoc = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, 0, isConductorTriggered: true);
+        LastMessageLoc = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, 0, isConductorTriggered: true, sourceMessage: sourceMessage);
 
         if(!P.Config.AutoTeleport) return;
     //Cross-zone and instance-switch teleports fire immediately, same as before this feature existed
@@ -42,14 +42,14 @@ internal unsafe static class ConductorFlagHandler
                 return;
             }
 
-            TeleportTo(m, nearestAetheryte.Value, P.Config.AutoSwitchInstanceToOne ? 1 : 0);
+            TeleportTo(m, nearestAetheryte.Value, P.Config.AutoSwitchInstanceToOne ? 1 : 0, sourceMessage);
             return;
         }
 
         if(Utils.CanAutoInstanceSwitch() && P.Config.AutoSwitchInstanceTwoRanks &&
            S.LifestreamIPC.GetCurrentInstance() < S.LifestreamIPC.GetNumberOfInstances())
         {
-            TeleportTo(m, nearestAetheryte.Value, S.LifestreamIPC.GetCurrentInstance() + 1);
+            TeleportTo(m, nearestAetheryte.Value, S.LifestreamIPC.GetCurrentInstance() + 1, sourceMessage);
             return;
         }
 
@@ -57,14 +57,14 @@ internal unsafe static class ConductorFlagHandler
 
         if(Svc.Condition[ConditionFlag.InCombat])
         {
-            _pendingFlag = (m, nearestAetheryte.Value);
+            _pendingFlag = (m, nearestAetheryte.Value, sourceMessage);
             return;
         }
 
-        DecideWalkOrTeleport(m, nearestAetheryte.Value);
+        DecideWalkOrTeleport(m, nearestAetheryte.Value, sourceMessage);
     }
-    
-    //Checks for combat end, but only bothers when we have a flag already pending. 
+
+    //Checks for combat end, but only bothers when we have a flag already pending.
     internal static void Update()
     {
         if(_pendingFlag == null) return;
@@ -72,9 +72,9 @@ internal unsafe static class ConductorFlagHandler
         bool inCombat = Svc.Condition[ConditionFlag.InCombat];
         if(_wasInCombat && !inCombat)
         {
-            var (link, aetheryte) = _pendingFlag.Value;
+            var (link, aetheryte, sourceMessage) = _pendingFlag.Value;
             _pendingFlag = null;
-            DecideWalkOrTeleport(link, aetheryte);
+            DecideWalkOrTeleport(link, aetheryte, sourceMessage);
         }
         _wasInCombat = inCombat;
     }
@@ -116,7 +116,7 @@ internal unsafe static class ConductorFlagHandler
         }
     }
 
-    private static void DecideWalkOrTeleport(MapLinkPayload m, Aetheryte nearestAetheryte)
+    private static void DecideWalkOrTeleport(MapLinkPayload m, Aetheryte nearestAetheryte, string sourceMessage = null)
     {
         // A new flag supersedes whatever movement was previously queued -- e.g. still hunting for a
         // target on the last A-rank when the next one's already posted. Stop that and go to the new spot.
@@ -126,9 +126,10 @@ internal unsafe static class ConductorFlagHandler
         if(flagWorldPos == null)
         {
             // can't compare distances, fall back to walking from where we are
+            PluginLog.Information($"[QueueMove] Walking to flag (no distance data) from message: \"{sourceMessage}\"");
             TaskMount.EnqueueIfEnabled();
             TaskMoveToFlag.EnqueueIfEnabled(flagWorldPos);
-            TaskStopNearARank.EnqueueIfEnabled();
+            TaskStopNearARank.EnqueueIfEnabled(flagWorldPos);
             return;
         }
 
@@ -139,22 +140,24 @@ internal unsafe static class ConductorFlagHandler
         PluginLog.Debug($"Flag follow-up: walk={walkDistance:0.0}, teleport+walk={teleportDistance:0.0}");
         if(walkDistance <= teleportDistance)
         {
+            PluginLog.Information($"[QueueMove] Walking to flag from message: \"{sourceMessage}\"");
             TaskMount.EnqueueIfEnabled();
             TaskMoveToFlag.EnqueueIfEnabled(flagWorldPos);
-            TaskStopNearARank.EnqueueIfEnabled();
+            TaskStopNearARank.EnqueueIfEnabled(flagWorldPos);
         }
         else
         {
-            TeleportTo(m, nearestAetheryte, 0);
+            TeleportTo(m, nearestAetheryte, 0, sourceMessage);
         }
     }
 
-    private static void TeleportTo(MapLinkPayload m, Aetheryte nearestAetheryte, int instance)
+    private static void TeleportTo(MapLinkPayload m, Aetheryte nearestAetheryte, int instance, string sourceMessage = null)
     {
         // same reasoning as DecideWalkOrTeleport -- don't leave a stale targeting/dismount sequence
         // running for the previous flag once we've decided to act on a new one.
         P.TaskManager.Abort();
-        P.TeleportTo = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, instance, isConductorTriggered: true);
+        PluginLog.Information($"[QueueMove] Teleporting toward flag from message: \"{sourceMessage}\"");
+        P.TeleportTo = ArrivalData.CreateOrNull(nearestAetheryte, m.TerritoryType.RowId, instance, isConductorTriggered: true, link: m, sourceMessage: sourceMessage);
         Utils.DelayTeleport();
         Notify.Info("Engaging Autoteleport");
     }

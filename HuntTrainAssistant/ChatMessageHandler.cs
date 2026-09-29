@@ -23,6 +23,15 @@ internal unsafe static partial class ChatMessageHandler
     [GeneratedRegex(@"\[\d{1,3}(\.\d+)?%\]")]
     private static partial Regex HealthPercentRegex();
 
+    // Guards against the same flag re-triggering the move task twice in quick succession -- seen live
+    // with a conductor's identical message appearing on two channels at once (still unclear whether
+    // that's dual-channel posting or duplicate delivery of a single message; [FlagTrace] logging below
+    // is there to nail that down next time). Coordinate-based rather than raw text so two conductors
+    // flagging the same spot moments apart still both go through.
+    private static (uint Territory, float X, float Y)? _lastFiredFlag;
+    private static DateTime _lastFiredFlagTime;
+    private static readonly TimeSpan DuplicateFlagWindow = TimeSpan.FromSeconds(3);
+
     internal static void Chat_ChatMessage(IHandleableChatMessage cm)
     {
         var conductorNames = P.Config.Conductors.Select(x => x.Name).ToList();
@@ -36,9 +45,20 @@ internal unsafe static partial class ChatMessageHandler
                 if (x is MapLinkPayload m)
                 {
                     isMapLink = true;
-                    if (isConductorMessage && (Utils.IsInHuntingTerritory() || P.Config.Debug) && !HealthPercentRegex().IsMatch(cm.Message.TextValue))
+                    // Conductors commonly post the same flag to both Yell and Shout -- reacting to both
+                    // fires the flag twice (double abort/restart of the move task). Shout is the channel
+                    // conductors actually rely on for train flags, so only act on that one.
+                    var isTriggerChannel = cm.LogKind == XivChatType.Shout || (P.Config.Debug && cm.LogKind == XivChatType.Echo);
+                    var isHealthPercent = HealthPercentRegex().IsMatch(cm.Message.TextValue);
+                    (uint Territory, float X, float Y) flagKey = (m.TerritoryType.RowId, m.RawX / 1000f, m.RawY / 1000f);
+                    var isDuplicate = _lastFiredFlag is { } last && last == flagKey && DateTime.UtcNow - _lastFiredFlagTime < DuplicateFlagWindow;
+                    var willTrigger = isConductorMessage && isTriggerChannel && (Utils.IsInHuntingTerritory() || P.Config.Debug) && !isHealthPercent && !isDuplicate;
+                    PluginLog.Information($"[FlagTrace] chan={cm.LogKind} sender={cm.Sender} text=\"{cm.Message.TextValue}\" link=({flagKey.X:0.00},{flagKey.Y:0.00})@{flagKey.Territory} isConductor={isConductorMessage} isTriggerChannel={isTriggerChannel} isHealthPercent={isHealthPercent} isDuplicate={isDuplicate} => {(willTrigger ? "FIRING OnConductorFlag" : "skipped")}");
+                    if (willTrigger)
                     {
-                        ConductorFlagHandler.OnConductorFlag(m);
+                        _lastFiredFlag = flagKey;
+                        _lastFiredFlagTime = DateTime.UtcNow;
+                        ConductorFlagHandler.OnConductorFlag(m, cm.Message.TextValue);
                     }
                     break;
                 }

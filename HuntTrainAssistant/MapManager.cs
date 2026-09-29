@@ -64,7 +64,15 @@ internal static class MapManager
         var num = map.SizeFactor / 100f;
         var pixelX = (int)((maplinkMessage.XCoord - 1f) * (2048f / 41f) * num);
         var pixelZ = (int)((maplinkMessage.YCoord - 1f) * (2048f / 41f) * num);
-        return ECommons.GameHelpers.Map.PixelCoordsToWorldCoords(pixelX, pixelZ, map.RowId);
+        var pos = ECommons.GameHelpers.Map.PixelCoordsToWorldCoords(pixelX, pixelZ, map.RowId);
+
+        // PixelCoordsToWorldCoords always returns Y=0 -- on any map above sea level that's underground,
+        // and vnavmesh's SimpleMove flies a straight 3D line to it, diving into the floor. Raycast down
+        // through the actual navmesh from high above the X/Z to find real ground height; fall back to
+        // the player's current altitude (avoids the dive, just not terrain-accurate) if the mesh can't
+        // resolve it (e.g. not yet loaded for that zone).
+        var onFloor = S.VNavmeshIPC.PointOnFloor(pos with { Y = 1024f }, false, 5f);
+        return onFloor ?? pos with { Y = Player.Position.Y };
     }
 
     internal static Vector2 getDistanceCompensationHackDelta(string AetheryteName)

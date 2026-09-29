@@ -44,6 +44,15 @@ public class TabIntegrations
             ImGui.Checkbox("Allow cross-datacenter teleports", ref P.Config.AutoVisitCrossDC);
             ImGuiEx.PluginAvailabilityIndicator([new("TeleporterPlugin", "Teleporter"), new("Lifestream")]);
             ImGuiEx.PluginAvailabilityIndicator([new("Lifestream")]);
+            ImGui.Checkbox("Auto-move toward an S/SS-rank after teleporting, stopping short of it", ref P.Config.AutoMoveToSRank);
+            if(P.Config.AutoMoveToSRank)
+            {
+                ImGui.Indent();
+                ImGuiEx.TextWrapped("Community practice is usually to gather and wait before pulling an S-rank -- flying all the way to it risks pulling early. Instead we stop, dismount and wait once this close:");
+                ImGui.SetNextItemWidth(150f);
+                ImGui.DragFloat("Stop distance (yalms)##stopnearsrank", ref P.Config.StopNearSRankDistance, 1f, 1f, 200f);
+                ImGui.Unindent();
+            }
             ImGuiEx.TreeNodeCollapsingHeader($"Blacklist Worlds ({P.Config.WorldBlacklist.Count} currently blacklisted)###blworlds", DrawWorldBlacklist);
         })
 
